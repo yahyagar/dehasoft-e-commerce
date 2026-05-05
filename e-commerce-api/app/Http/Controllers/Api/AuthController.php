@@ -7,7 +7,6 @@ use App\Models\User;
 use App\Support\ApiResponse;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Validator;
 use Tymon\JWTAuth\Exceptions\JWTException;
 use Tymon\JWTAuth\Facades\JWTAuth;
@@ -29,9 +28,8 @@ class AuthController extends Controller
         }
 
         $user = User::create([
-            'name' => $request->get('name'),
-            'email' => $request->get('email'),
-            'password' => Hash::make($request->get('password')),
+            ...$validator->validated(),
+            'role' => 'customer',
         ]);
         $token = JWTAuth::fromUser($user);
 
@@ -102,7 +100,7 @@ class AuthController extends Controller
 
 
     /**
-     * @return array{id: int, name: string, email: string}
+     * @return array{id: int, name: string, email: string, role: string}
      */
     private function userData(User $user): array
     {
@@ -110,6 +108,7 @@ class AuthController extends Controller
             'id' => $user->id,
             'name' => $user->name,
             'email' => $user->email,
+            'role' => $user->role,
         ];
     }
 }
