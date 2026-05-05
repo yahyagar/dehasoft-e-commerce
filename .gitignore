@@ -1,0 +1,12 @@
+# Laravel
+e-commerce-api/vendor/
+e-commerce-api/.env
+
+# Next.js
+e-commerce-web/node_modules/
+e-commerce-web/.next/
+e-commerce-web/.env.local
+
+# OS / editor
+.DS_Store
+.vscode/
