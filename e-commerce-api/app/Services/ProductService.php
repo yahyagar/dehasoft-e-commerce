@@ -9,9 +9,7 @@ use Illuminate\Support\Str;
 
 class ProductService
 {
-    public function __construct(private readonly ProductRepository $products)
-    {
-    }
+    public function __construct(private readonly ProductRepository $products) {}
 
     /**
      * @param  array{category?: string|null, category_id?: int|null, active?: bool|null}  $filters

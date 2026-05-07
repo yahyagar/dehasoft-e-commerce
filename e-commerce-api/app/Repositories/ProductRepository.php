@@ -16,10 +16,10 @@ class ProductRepository
         return Product::query()
             ->with('category')
             ->when($filters['category'] ?? null, function ($query, string $slug): void {
-                $query->whereHas('category', fn ($categoryQuery) => $categoryQuery->where('slug', $slug));
+                $query->whereHas('category', fn($categoryQuery) => $categoryQuery->where('slug', $slug));
             })
-            ->when($filters['category_id'] ?? null, fn ($query, int $categoryId) => $query->where('category_id', $categoryId))
-            ->when($filters['active'] !== null, fn ($query) => $query->where('is_active', $filters['active']))
+            ->when($filters['category_id'] ?? null, fn($query, int $categoryId) => $query->where('category_id', $categoryId))
+            ->when($filters['active'] !== null, fn($query) => $query->where('is_active', $filters['active']))
             ->latest()
             ->get();
     }
