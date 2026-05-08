@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\Product\StoreProductRequest;
 use App\Http\Requests\Product\UpdateProductRequest;
 use App\Models\Product;
+use App\Services\MoneyService;
 use App\Services\ProductService;
 use App\Support\ApiResponse;
 use Illuminate\Http\JsonResponse;
@@ -13,7 +14,10 @@ use Illuminate\Http\Request;
 
 class ProductController extends Controller
 {
-    public function __construct(private readonly ProductService $products)
+    public function __construct(
+        private readonly ProductService $products,
+        private readonly MoneyService $money,
+    )
     {
     }
 
@@ -26,14 +30,16 @@ class ProductController extends Controller
         ]);
 
         return ApiResponse::success([
-            'products' => $products->map(fn (Product $product) => $this->productData($product))->values(),
+            'products' => $products
+                ->map(fn (Product $product) => $this->productData($product, $request->query('currency')))
+                ->values(),
         ]);
     }
 
-    public function show(Product $product): JsonResponse
+    public function show(Request $request, Product $product): JsonResponse
     {
         return ApiResponse::success([
-            'product' => $this->productData($product->load('category')),
+            'product' => $this->productData($product->load('category'), $request->query('currency')),
         ]);
     }
 
@@ -62,7 +68,7 @@ class ProductController extends Controller
         return ApiResponse::success(message: 'Product deleted successfully');
     }
 
-    private function productData(Product $product): array
+    private function productData(Product $product, ?string $currency = null): array
     {
         return [
             'id' => $product->id,
@@ -75,7 +81,8 @@ class ProductController extends Controller
             'slug' => $product->slug,
             'description' => $product->description,
             'image_url' => $product->image_url,
-            'price' => $product->price,
+            'price_try' => $product->price,
+            'display_price' => $this->money->display($product->price, $currency),
             'stock' => $product->stock,
             'is_active' => $product->is_active,
         ];
