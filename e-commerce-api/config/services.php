@@ -22,6 +22,13 @@ return [
         'key' => env('RESEND_API_KEY'),
     ],
 
+    'currency_api' => [
+        'url' => env('CURRENCY_API_URL', 'https://currencyapi.net/api/v2/rates'),
+        'key' => env('CURRENCY_API_KEY'),
+        'base' => env('CURRENCY_API_BASE', 'USD'),
+        'timeout' => (int) env('CURRENCY_API_TIMEOUT', 10),
+    ],
+
     'ses' => [
         'key' => env('AWS_ACCESS_KEY_ID'),
         'secret' => env('AWS_SECRET_ACCESS_KEY'),

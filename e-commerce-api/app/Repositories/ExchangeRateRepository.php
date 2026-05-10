@@ -23,4 +23,15 @@ class ExchangeRateRepository
             ->where('currency', strtoupper($currency))
             ->first();
     }
+
+    public function updateOrCreate(string $currency, string $rateToTry, string $rateDate): ExchangeRate
+    {
+        return ExchangeRate::query()->updateOrCreate(
+            ['currency' => strtoupper($currency)],
+            [
+                'rate_to_try' => $rateToTry,
+                'rate_date' => $rateDate,
+            ],
+        );
+    }
 }
