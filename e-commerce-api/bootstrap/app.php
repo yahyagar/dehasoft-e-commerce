@@ -2,6 +2,7 @@
 
 use App\Exceptions\CartException;
 use App\Exceptions\CurrencyException;
+use App\Exceptions\OrderException;
 use App\Support\ApiResponse;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
@@ -27,6 +28,10 @@ return Application::configure(basePath: dirname(__DIR__))
         });
 
         $exceptions->render(function (CurrencyException $exception, Request $request) {
+            return ApiResponse::error($exception->getMessage(), $exception->status());
+        });
+
+        $exceptions->render(function (OrderException $exception, Request $request) {
             return ApiResponse::error($exception->getMessage(), $exception->status());
         });
     })->create();
