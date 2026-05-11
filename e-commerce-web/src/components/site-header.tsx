@@ -1,12 +1,24 @@
+"use client";
+
 import Link from "next/link";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
+import { useState } from "react";
 
 const categories = [
-  "Elektronik",
-  "Moda",
-  "Ev & Yaşam",
-  "Spor & Outdoor",
-  "Kozmetik & Sağlık",
+  { name: "Elektronik", slug: "elektronik" },
+  { name: "Moda", slug: "moda" },
+  { name: "Ev & Yaşam", slug: "ev-yasam" },
+  { name: "Spor & Outdoor", slug: "spor-outdoor" },
+  { name: "Kozmetik & Sağlık", slug: "kozmetik-saglik" },
 ];
+
+const currencies = ["TRY", "USD", "EUR"] as const;
+
+type Currency = (typeof currencies)[number];
+
+function isCurrency(value: string | null): value is Currency {
+  return currencies.includes(value as Currency);
+}
 
 function SearchIcon() {
   return (
@@ -22,25 +34,6 @@ function SearchIcon() {
         strokeLinecap="round"
         strokeLinejoin="round"
         d="m21 21-4.3-4.3m1.3-5.2a6.5 6.5 0 1 1-13 0 6.5 6.5 0 0 1 13 0Z"
-      />
-    </svg>
-  );
-}
-
-function RefreshIcon() {
-  return (
-    <svg
-      aria-hidden="true"
-      className="h-5 w-5"
-      fill="none"
-      viewBox="0 0 24 24"
-      stroke="currentColor"
-      strokeWidth="2"
-    >
-      <path
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        d="M20 11a8.1 8.1 0 0 0-14.2-4.9L4 8m0 0V3m0 5h5m-5 5a8.1 8.1 0 0 0 14.2 4.9L20 16m0 0v5m0-5h-5"
       />
     </svg>
   );
@@ -85,6 +78,42 @@ function UserIcon() {
 }
 
 export function SiteHeader() {
+  const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
+  const [isAccountMenuOpen, setIsAccountMenuOpen] = useState(false);
+  const currencyParam = searchParams.get("currency");
+  const selectedCurrency: Currency = isCurrency(currencyParam)
+    ? currencyParam
+    : "TRY";
+
+  function buildCategoryHref(slug: string) {
+    const params = new URLSearchParams();
+    params.set("category", slug);
+    params.set("currency", selectedCurrency);
+
+    return `/products?${params.toString()}`;
+  }
+
+  function updateCurrency(currency: string) {
+    const params = new URLSearchParams(searchParams.toString());
+    params.set("currency", currency);
+    router.push(`${pathname}?${params.toString()}`);
+  }
+
+  async function handleLogout() {
+    await fetch("/api/auth/logout", {
+      method: "POST",
+      headers: {
+        Accept: "application/json",
+      },
+    });
+
+    setIsAccountMenuOpen(false);
+    router.push("/login");
+    router.refresh();
+  }
+
   return (
     <header className="sticky top-0 z-50 border-b border-slate-200 bg-slate-50/95 backdrop-blur">
       <div className="mx-auto flex min-h-16 w-full max-w-7xl items-center gap-5 px-4 sm:px-6 lg:px-8">
@@ -95,18 +124,15 @@ export function SiteHeader() {
           DehaCommerce
         </Link>
 
-        <nav aria-label="Ana navigasyon" className="hidden items-center gap-5 md:flex">
+        <nav
+          aria-label="Ana navigasyon"
+          className="hidden items-center gap-5 md:flex"
+        >
           <Link
-            href="/"
+            href="/products"
             className="border-b-2 border-blue-900 px-1 py-5 font-semibold text-blue-950"
           >
             Mağaza
-          </Link>
-          <Link
-            href="/orders"
-            className="px-1 py-5 font-semibold text-slate-600 transition hover:text-blue-950"
-          >
-            Siparişler
           </Link>
         </nav>
 
@@ -118,16 +144,16 @@ export function SiteHeader() {
         >
           {categories.map((category) => (
             <Link
-              key={category}
-              href={`/products?category=${encodeURIComponent(category)}`}
+              key={category.slug}
+              href={buildCategoryHref(category.slug)}
               className="max-w-24 text-center leading-4 transition hover:text-blue-800"
             >
-              {category}
+              {category.name}
             </Link>
           ))}
         </nav>
 
-        <form className="ml-auto hidden w-full max-w-72 items-center gap-3 rounded-md border border-slate-300 bg-slate-100 px-4 py-2 text-slate-500 md:flex">
+        <form className="ml-auto hidden w-full max-w-72 items-center gap-3 rounded-md border border-slate-300 bg-slate-100 px-4 py-2 text-slate-500 transition hover:border-blue-300 hover:bg-white focus-within:border-blue-900 focus-within:bg-white md:flex">
           <SearchIcon />
           <label className="sr-only" htmlFor="site-search">
             Ürün ara
@@ -141,14 +167,22 @@ export function SiteHeader() {
         </form>
 
         <div className="flex items-center gap-2 text-blue-950">
-          <button
-            type="button"
-            className="grid h-10 w-10 place-items-center rounded-md transition hover:bg-blue-100"
-            aria-label="Kurları yenile"
-            title="Kurları yenile"
+          <label className="sr-only" htmlFor="header-currency">
+            Para birimi
+          </label>
+          <select
+            id="header-currency"
+            value={selectedCurrency}
+            onChange={(event) => updateCurrency(event.target.value)}
+            className="h-10 cursor-pointer rounded-md border border-slate-300 bg-blue-50 px-3 text-sm font-bold text-blue-950 outline-none transition hover:border-blue-300 hover:bg-blue-100 focus:border-blue-900"
+            title="Para birimi seç"
           >
-            <RefreshIcon />
-          </button>
+            {currencies.map((currency) => (
+              <option key={currency} value={currency}>
+                {currency}
+              </option>
+            ))}
+          </select>
           <Link
             href="/cart"
             className="relative grid h-10 w-10 place-items-center rounded-md transition hover:bg-blue-100"
@@ -160,14 +194,44 @@ export function SiteHeader() {
               0
             </span>
           </Link>
-          <Link
-            href="/login"
-            className="grid h-10 w-10 place-items-center rounded-md transition hover:bg-blue-100"
-            aria-label="Hesap"
-            title="Hesap"
-          >
-            <UserIcon />
-          </Link>
+          <div className="relative">
+            <button
+              type="button"
+              onClick={() => setIsAccountMenuOpen((value) => !value)}
+              className="grid h-10 w-10 place-items-center rounded-md transition hover:bg-blue-100"
+              aria-expanded={isAccountMenuOpen}
+              aria-label="Hesap menüsü"
+              title="Hesap"
+            >
+              <UserIcon />
+            </button>
+
+            {isAccountMenuOpen ? (
+              <div className="absolute right-0 top-12 w-48 overflow-hidden rounded-md border border-slate-200 bg-white py-2 text-sm font-semibold text-slate-700 shadow-xl">
+                <Link
+                  href="/orders"
+                  onClick={() => setIsAccountMenuOpen(false)}
+                  className="block px-4 py-2 transition hover:bg-blue-50 hover:text-blue-900"
+                >
+                  Siparişlerim
+                </Link>
+                <Link
+                  href="/login"
+                  onClick={() => setIsAccountMenuOpen(false)}
+                  className="block px-4 py-2 transition hover:bg-blue-50 hover:text-blue-900"
+                >
+                  Giriş Yap
+                </Link>
+                <button
+                  type="button"
+                  onClick={handleLogout}
+                  className="block w-full px-4 py-2 text-left transition hover:bg-red-50 hover:text-red-700"
+                >
+                  Çıkış Yap
+                </button>
+              </div>
+            ) : null}
+          </div>
         </div>
       </div>
     </header>

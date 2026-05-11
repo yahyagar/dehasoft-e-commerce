@@ -1,9 +1,9 @@
+import { getAuthToken } from "@/lib/auth-cookie";
 import { laravelRequest } from "@/lib/laravel-api";
-import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
 
 export async function POST() {
-  const token = (await cookies()).get("auth_token")?.value;
+  const token = await getAuthToken();
 
   if (!token) {
     const response = NextResponse.json(
