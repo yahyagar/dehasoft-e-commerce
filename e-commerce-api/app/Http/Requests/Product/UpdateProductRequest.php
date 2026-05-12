@@ -2,10 +2,7 @@
 
 namespace App\Http\Requests\Product;
 
-use App\Support\ApiResponse;
-use Illuminate\Contracts\Validation\Validator;
 use Illuminate\Foundation\Http\FormRequest;
-use Illuminate\Http\Exceptions\HttpResponseException;
 use Illuminate\Validation\Rule;
 
 class UpdateProductRequest extends FormRequest
@@ -27,17 +24,11 @@ class UpdateProductRequest extends FormRequest
             'name' => ['sometimes', 'string', 'max:255'],
             'slug' => ['sometimes', 'nullable', 'string', 'max:255', Rule::unique('products', 'slug')->ignore($product)],
             'description' => ['sometimes', 'nullable', 'string'],
-            'image_url' => ['sometimes', 'nullable', 'url', 'max:2048'],
+            'image' => ['sometimes', 'nullable', 'image', 'mimes:jpg,jpeg,png,webp', 'max:2048'],
             'price' => ['sometimes', 'integer', 'min:0'],
             'stock' => ['sometimes', 'integer', 'min:0'],
             'is_active' => ['sometimes', 'boolean'],
         ];
     }
 
-    protected function failedValidation(Validator $validator): void
-    {
-        throw new HttpResponseException(ApiResponse::error('Validation failed', 422, [
-            'errors' => $validator->errors(),
-        ]));
-    }
 }

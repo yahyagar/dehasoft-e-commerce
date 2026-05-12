@@ -15,6 +15,12 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
     'exchange_rate_to_try',
     'total_try',
     'total_in_currency',
+    'shipping_full_name',
+    'shipping_phone',
+    'shipping_city',
+    'shipping_district',
+    'shipping_address',
+    'shipping_note',
 ])]
 class Order extends Model
 {

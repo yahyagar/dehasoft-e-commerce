@@ -36,7 +36,7 @@ class OrderController extends Controller
         /** @var User $user */
         $user = auth('api')->user();
 
-        $order = $this->orders->createFromCart($user, $request->validated('currency'));
+        $order = $this->orders->createFromCart($user, $request->validated());
 
         return ApiResponse::success([
             'order' => $this->orderData($order),
@@ -73,6 +73,14 @@ class OrderController extends Controller
             'exchange_rate_to_try' => $order->exchange_rate_to_try,
             'total_try' => $order->total_try,
             'total_in_currency' => $order->total_in_currency,
+            'shipping' => [
+                'full_name' => $order->shipping_full_name,
+                'phone' => $order->shipping_phone,
+                'city' => $order->shipping_city,
+                'district' => $order->shipping_district,
+                'address' => $order->shipping_address,
+                'note' => $order->shipping_note,
+            ],
             'items' => $order->items
                 ->map(fn (OrderItem $item) => $this->orderItemData($item))
                 ->values(),

@@ -3,10 +3,7 @@
 namespace App\Http\Requests\Order;
 
 use App\Services\ExchangeRateService;
-use App\Support\ApiResponse;
-use Illuminate\Contracts\Validation\Validator;
 use Illuminate\Foundation\Http\FormRequest;
-use Illuminate\Http\Exceptions\HttpResponseException;
 use Illuminate\Validation\Rule;
 
 class StoreOrderRequest extends FormRequest
@@ -23,13 +20,14 @@ class StoreOrderRequest extends FormRequest
     {
         return [
             'currency' => ['required', 'string', Rule::in(ExchangeRateService::SUPPORTED_CURRENCIES)],
+            'shipping' => ['required', 'array'],
+            'shipping.full_name' => ['required', 'string', 'max:255'],
+            'shipping.phone' => ['required', 'string', 'max:30'],
+            'shipping.city' => ['required', 'string', 'max:100'],
+            'shipping.district' => ['required', 'string', 'max:100'],
+            'shipping.address' => ['required', 'string', 'max:1000'],
+            'shipping.note' => ['nullable', 'string', 'max:1000'],
         ];
     }
 
-    protected function failedValidation(Validator $validator): void
-    {
-        throw new HttpResponseException(ApiResponse::error('Validation failed', 422, [
-            'errors' => $validator->errors(),
-        ]));
-    }
 }

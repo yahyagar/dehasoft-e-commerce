@@ -27,11 +27,17 @@ class OrderService
      */
     public function listForUser(User $user): Collection
     {
+        if ($user->isAdmin()) {
+            return $this->orders->all();
+        }
+
         return $this->orders->forUser($user);
     }
 
-    public function createFromCart(User $user, string $currency): Order
+    public function createFromCart(User $user, array $data): Order
     {
+        $currency = $data['currency'];
+        $shipping = $data['shipping'];
         $currency = strtoupper($currency);
 
         if (! $this->exchangeRates->isSupported($currency)) {
@@ -44,7 +50,7 @@ class OrderService
             throw new CurrencyException('Exchange rate not found', 404);
         }
 
-        return DB::transaction(function () use ($user, $currency, $exchangeRate): Order {
+        return DB::transaction(function () use ($user, $currency, $exchangeRate, $shipping): Order {
             $cartItems = $this->cartItems->forUser($user);
 
             if ($cartItems->isEmpty()) {
@@ -84,6 +90,12 @@ class OrderService
                 'exchange_rate_to_try' => $exchangeRate->rate_to_try,
                 'total_try' => $totalTry,
                 'total_in_currency' => $this->convertFromTry($totalTry, $currency, (float) $exchangeRate->rate_to_try),
+                'shipping_full_name' => $shipping['full_name'],
+                'shipping_phone' => $shipping['phone'],
+                'shipping_city' => $shipping['city'],
+                'shipping_district' => $shipping['district'],
+                'shipping_address' => $shipping['address'],
+                'shipping_note' => $shipping['note'] ?? null,
             ], $itemsData);
 
             $this->cartItems->clear($user);

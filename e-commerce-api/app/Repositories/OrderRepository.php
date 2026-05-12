@@ -11,6 +11,17 @@ class OrderRepository
     /**
      * @return Collection<int, Order>
      */
+    public function all(): Collection
+    {
+        return Order::query()
+            ->with('items')
+            ->latest()
+            ->get();
+    }
+
+    /**
+     * @return Collection<int, Order>
+     */
     public function forUser(User $user): Collection
     {
         return Order::query()

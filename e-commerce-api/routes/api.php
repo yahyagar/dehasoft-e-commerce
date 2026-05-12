@@ -23,11 +23,14 @@ Route::middleware('proxy.secret')->prefix('auth')->group(function () {
     });
 });
 
-Route::middleware(['proxy.secret', 'auth:api'])->group(function () {
+Route::middleware('proxy.secret')->group(function () {
     Route::get('/categories', [CategoryController::class, 'index']);
-    Route::get('/exchange-rates', [ExchangeRateController::class, 'index']);
     Route::get('/products', [ProductController::class, 'index']);
     Route::get('/products/{product}', [ProductController::class, 'show']);
+});
+
+Route::middleware(['proxy.secret', 'auth:api'])->group(function () {
+    Route::get('/exchange-rates', [ExchangeRateController::class, 'index']);
 
     Route::get('/cart', [CartController::class, 'index']);
     Route::post('/cart/items', [CartController::class, 'store']);
