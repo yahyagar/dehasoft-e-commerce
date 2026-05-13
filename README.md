@@ -524,9 +524,7 @@ Customer:
 ├── README.md
 ├── Makefile
 ├── docs
-│   ├── backend-progress-and-presentation-notes.md
-│   ├── frontend-progress-and-presentation-notes.md
-│   └── postman
+│    └── postman
 │       └── dehacommerce-next-proxy.postman_collection.json
 ├── e-commerce-api
 │   ├── app

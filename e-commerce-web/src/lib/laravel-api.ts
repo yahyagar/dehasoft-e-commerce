@@ -38,7 +38,9 @@ export async function laravelRequest(
     "Proxy-Secret-Key": proxySecret,
   };
 
-  if (options.body !== undefined) {
+  const isFormData = options.body instanceof FormData;
+
+  if (options.body !== undefined && !isFormData) {
     headers["Content-Type"] = "application/json";
   }
 
@@ -46,11 +48,19 @@ export async function laravelRequest(
     headers.Authorization = `Bearer ${options.token}`;
   }
 
+  let requestBody: BodyInit | undefined;
+
+  if (isFormData) {
+    requestBody = options.body as FormData;
+  } else if (options.body !== undefined) {
+    requestBody = JSON.stringify(options.body);
+  }
+
   try {
     const response = await fetch(`${laravelApiUrl}${path}`, {
       method: options.method ?? "GET",
       headers,
-      body: options.body !== undefined ? JSON.stringify(options.body) : undefined,
+      body: requestBody,
       cache: "no-store",
     });
 

@@ -33,3 +33,5 @@ export type ProductsResponse = ApiResponse<{
 export type ProductResponse = ApiResponse<{
   product: Product;
 }>;
+
+export type ProductPayload = FormData;

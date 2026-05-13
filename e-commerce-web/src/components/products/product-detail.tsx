@@ -7,7 +7,7 @@ import type {
   ProductResponse,
   ProductsResponse,
 } from "@/types/product";
-import { useSearchParams } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 
 const currencies = ["TRY", "USD", "EUR"] as const;
@@ -42,6 +42,7 @@ type ProductDetailProps = {
 };
 
 export function ProductDetail({ productId }: ProductDetailProps) {
+  const router = useRouter();
   const searchParams = useSearchParams();
   const currencyParam = searchParams.get("currency");
   const selectedCurrency: Currency = isCurrency(currencyParam)
@@ -52,6 +53,8 @@ export function ProductDetail({ productId }: ProductDetailProps) {
   const [products, setProducts] = useState<Product[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [message, setMessage] = useState<string | null>(null);
+  const [isAdding, setIsAdding] = useState(false);
+  const [cartMessage, setCartMessage] = useState<string | null>(null);
 
   useEffect(() => {
     let isMounted = true;
@@ -61,12 +64,16 @@ export function ProductDetail({ productId }: ProductDetailProps) {
       setMessage(null);
 
       try {
+        const productsParams = new URLSearchParams();
+        productsParams.set("currency", selectedCurrency);
+        productsParams.set("active", "true");
+
         const [productResponse, productsResponse] = await Promise.all([
           fetch(`/api/products/${productId}?currency=${selectedCurrency}`, {
             headers: { Accept: "application/json" },
             cache: "no-store",
           }),
-          fetch(`/api/products?currency=${selectedCurrency}`, {
+          fetch(`/api/products?${productsParams.toString()}`, {
             headers: { Accept: "application/json" },
             cache: "no-store",
           }),
@@ -140,6 +147,48 @@ export function ProductDetail({ productId }: ProductDetailProps) {
       })
       .slice(0, 4);
   }, [product, products]);
+
+  async function addToCart() {
+    if (!product) {
+      return;
+    }
+
+    setIsAdding(true);
+    setCartMessage(null);
+
+    try {
+      const response = await fetch("/api/cart/items", {
+        method: "POST",
+        headers: {
+          Accept: "application/json",
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          product_id: product.id,
+          quantity: 1,
+        }),
+      });
+      const result = (await response.json()) as { message?: string };
+
+      if (response.status === 401) {
+        router.push("/login");
+        return;
+      }
+
+      if (!response.ok) {
+        throw new Error(result.message ?? "Ürün sepete eklenemedi.");
+      }
+
+      setCartMessage("Sepete eklendi.");
+      window.dispatchEvent(new Event("cart:updated"));
+    } catch (error) {
+      setCartMessage(
+        error instanceof Error ? error.message : "Ürün sepete eklenemedi."
+      );
+    } finally {
+      setIsAdding(false);
+    }
+  }
 
   if (isLoading) {
     return (
@@ -217,12 +266,18 @@ export function ProductDetail({ productId }: ProductDetailProps) {
 
             <button
               type="button"
-              className="mt-6 inline-flex h-14 w-full items-center justify-center gap-2 rounded-md bg-blue-900 px-6 font-bold text-white transition hover:bg-blue-800 disabled:cursor-not-allowed disabled:bg-slate-400"
-              disabled={!product.is_active || product.stock < 1}
+              onClick={addToCart}
+              className="mt-6 inline-flex h-14 w-full cursor-pointer items-center justify-center gap-2 rounded-md bg-blue-900 px-6 font-bold text-white transition hover:bg-blue-800 disabled:cursor-not-allowed disabled:bg-slate-400"
+              disabled={isAdding || !product.is_active || product.stock < 1}
             >
               <CartIcon />
-              Sepete Ekle
+              {isAdding ? "Ekleniyor" : "Sepete Ekle"}
             </button>
+            {cartMessage ? (
+              <p className="mt-3 text-sm font-semibold text-slate-600">
+                {cartMessage}
+              </p>
+            ) : null}
           </div>
         </div>
       </div>

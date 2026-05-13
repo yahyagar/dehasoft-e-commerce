@@ -18,6 +18,7 @@ function isCurrency(value: string | null): value is Currency {
 function buildProductsPath(currency: Currency, category: string | null) {
   const params = new URLSearchParams();
   params.set("currency", currency);
+  params.set("active", "true");
 
   if (category) {
     params.set("category", category);

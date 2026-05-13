@@ -1,12 +1,14 @@
 "use client";
 
+import type { CartResponse } from "@/types/cart";
+import type { AuthClientResponse, AuthUser } from "@/types/auth";
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 
 const categories = [
   { name: "Elektronik", slug: "elektronik" },
-  { name: "Moda", slug: "moda" },
+  { name: "Oyuncak", slug: "oyuncak" },
   { name: "Ev & Yaşam", slug: "ev-yasam" },
   { name: "Spor & Outdoor", slug: "spor-outdoor" },
   { name: "Kozmetik & Sağlık", slug: "kozmetik-saglik" },
@@ -18,25 +20,6 @@ type Currency = (typeof currencies)[number];
 
 function isCurrency(value: string | null): value is Currency {
   return currencies.includes(value as Currency);
-}
-
-function SearchIcon() {
-  return (
-    <svg
-      aria-hidden="true"
-      className="h-5 w-5"
-      fill="none"
-      viewBox="0 0 24 24"
-      stroke="currentColor"
-      strokeWidth="2"
-    >
-      <path
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        d="m21 21-4.3-4.3m1.3-5.2a6.5 6.5 0 1 1-13 0 6.5 6.5 0 0 1 13 0Z"
-      />
-    </svg>
-  );
 }
 
 function CartIcon() {
@@ -81,11 +64,78 @@ export function SiteHeader() {
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
+  const [user, setUser] = useState<AuthUser | null>(null);
   const [isAccountMenuOpen, setIsAccountMenuOpen] = useState(false);
+  const [cartQuantity, setCartQuantity] = useState(0);
   const currencyParam = searchParams.get("currency");
   const selectedCurrency: Currency = isCurrency(currencyParam)
     ? currencyParam
     : "TRY";
+
+  const loadCartQuantity = useCallback(async () => {
+    try {
+      const response = await fetch(`/api/cart?currency=${selectedCurrency}`, {
+        headers: { Accept: "application/json" },
+        cache: "no-store",
+      });
+
+      if (response.status === 401) {
+        setCartQuantity(0);
+        return;
+      }
+
+      const result = (await response.json()) as CartResponse;
+
+      if (!response.ok) {
+        setCartQuantity(0);
+        return;
+      }
+
+      setCartQuantity(result.data.total_quantity);
+    } catch {
+      setCartQuantity(0);
+    }
+  }, [selectedCurrency]);
+
+  useEffect(() => {
+    const timeoutId = window.setTimeout(() => {
+      void loadCartQuantity();
+    }, 0);
+
+    function handleCartUpdated() {
+      void loadCartQuantity();
+    }
+
+    window.addEventListener("cart:updated", handleCartUpdated);
+
+    return () => {
+      window.clearTimeout(timeoutId);
+      window.removeEventListener("cart:updated", handleCartUpdated);
+    };
+  }, [loadCartQuantity]);
+
+  useEffect(() => {
+    async function loadUser() {
+      try {
+        const response = await fetch("/api/auth/me", {
+          headers: { Accept: "application/json" },
+          cache: "no-store",
+        });
+
+        if (!response.ok) {
+          setUser(null);
+          return;
+        }
+
+        const result = (await response.json()) as AuthClientResponse;
+        setUser(result.data.user);
+      } catch {
+        setUser(null);
+      }
+    }
+
+    void loadUser();
+  }, [pathname]);
 
   function buildCategoryHref(slug: string) {
     const params = new URLSearchParams();
@@ -93,6 +143,13 @@ export function SiteHeader() {
     params.set("currency", selectedCurrency);
 
     return `/products?${params.toString()}`;
+  }
+
+  function buildCurrencyHref(path: string) {
+    const params = new URLSearchParams();
+    params.set("currency", selectedCurrency);
+
+    return `${path}?${params.toString()}`;
   }
 
   function updateCurrency(currency: string) {
@@ -110,8 +167,19 @@ export function SiteHeader() {
     });
 
     setIsAccountMenuOpen(false);
+    setUser(null);
+    setCartQuantity(0);
     router.push("/login");
     router.refresh();
+  }
+
+  function handleAccountClick() {
+    if (!user) {
+      router.push("/login");
+      return;
+    }
+
+    setIsAccountMenuOpen((value) => !value);
   }
 
   return (
@@ -129,7 +197,7 @@ export function SiteHeader() {
           className="hidden items-center gap-5 md:flex"
         >
           <Link
-            href="/products"
+            href={buildCurrencyHref("/products")}
             className="border-b-2 border-blue-900 px-1 py-5 font-semibold text-blue-950"
           >
             Mağaza
@@ -153,20 +221,7 @@ export function SiteHeader() {
           ))}
         </nav>
 
-        <form className="ml-auto hidden w-full max-w-72 items-center gap-3 rounded-md border border-slate-300 bg-slate-100 px-4 py-2 text-slate-500 transition hover:border-blue-300 hover:bg-white focus-within:border-blue-900 focus-within:bg-white md:flex">
-          <SearchIcon />
-          <label className="sr-only" htmlFor="site-search">
-            Ürün ara
-          </label>
-          <input
-            id="site-search"
-            type="search"
-            placeholder="Ürün ara..."
-            className="min-w-0 flex-1 bg-transparent text-sm text-slate-900 outline-none placeholder:text-slate-500"
-          />
-        </form>
-
-        <div className="flex items-center gap-2 text-blue-950">
+        <div className="ml-auto flex items-center gap-2 text-blue-950">
           <label className="sr-only" htmlFor="header-currency">
             Para birimi
           </label>
@@ -184,43 +239,36 @@ export function SiteHeader() {
             ))}
           </select>
           <Link
-            href="/cart"
+            href={buildCurrencyHref("/cart")}
             className="relative grid h-10 w-10 place-items-center rounded-md transition hover:bg-blue-100"
             aria-label="Sepet"
             title="Sepet"
           >
             <CartIcon />
-            <span className="absolute right-1 top-1 grid h-5 min-w-5 place-items-center rounded-full bg-red-600 px-1 text-[11px] font-bold text-white">
-              0
+            <span className="absolute right-0 top-0 grid h-4 min-w-4 place-items-center rounded-full bg-red-600 px-1 text-[10px] font-bold leading-none text-white">
+              {cartQuantity}
             </span>
           </Link>
           <div className="relative">
             <button
               type="button"
-              onClick={() => setIsAccountMenuOpen((value) => !value)}
-              className="grid h-10 w-10 place-items-center rounded-md transition hover:bg-blue-100"
+              onClick={handleAccountClick}
+              className="grid h-10 w-10 cursor-pointer place-items-center rounded-md transition hover:bg-blue-100"
               aria-expanded={isAccountMenuOpen}
-              aria-label="Hesap menüsü"
-              title="Hesap"
+              aria-label={user ? "Hesap menüsü" : "Giriş yap"}
+              title={user ? "Hesap" : "Giriş yap"}
             >
               <UserIcon />
             </button>
 
-            {isAccountMenuOpen ? (
+            {user && isAccountMenuOpen ? (
               <div className="absolute right-0 top-12 w-48 overflow-hidden rounded-md border border-slate-200 bg-white py-2 text-sm font-semibold text-slate-700 shadow-xl">
                 <Link
-                  href="/orders"
+                  href={user.role === "admin" ? "/admin/orders" : "/orders"}
                   onClick={() => setIsAccountMenuOpen(false)}
                   className="block px-4 py-2 transition hover:bg-blue-50 hover:text-blue-900"
                 >
-                  Siparişlerim
-                </Link>
-                <Link
-                  href="/login"
-                  onClick={() => setIsAccountMenuOpen(false)}
-                  className="block px-4 py-2 transition hover:bg-blue-50 hover:text-blue-900"
-                >
-                  Giriş Yap
+                  {user.role === "admin" ? "Admin Siparişleri" : "Siparişlerim"}
                 </Link>
                 <button
                   type="button"

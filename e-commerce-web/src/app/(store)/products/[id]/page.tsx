@@ -1,4 +1,5 @@
 import { ProductDetail } from "@/components/products/product-detail";
+import { Suspense } from "react";
 
 type ProductDetailPageProps = {
   params: Promise<{
@@ -11,5 +12,9 @@ export default async function ProductDetailPage({
 }: ProductDetailPageProps) {
   const { id } = await params;
 
-  return <ProductDetail productId={id} />;
+  return (
+    <Suspense fallback={null}>
+      <ProductDetail productId={id} />
+    </Suspense>
+  );
 }

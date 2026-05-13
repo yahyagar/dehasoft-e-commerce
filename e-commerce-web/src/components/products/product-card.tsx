@@ -2,7 +2,8 @@
 
 import type { Product } from "@/types/product";
 import Link from "next/link";
-import { useSearchParams } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
+import { useState } from "react";
 
 function CartIcon() {
   return (
@@ -23,35 +24,57 @@ function CartIcon() {
   );
 }
 
-function HeartIcon() {
-  return (
-    <svg
-      aria-hidden="true"
-      className="h-6 w-6"
-      fill="none"
-      viewBox="0 0 24 24"
-      stroke="currentColor"
-      strokeWidth="2"
-    >
-      <path
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        d="M21 8.5c0 6-9 11-9 11s-9-5-9-11A5.2 5.2 0 0 1 12 5a5.2 5.2 0 0 1 9 3.5Z"
-      />
-    </svg>
-  );
-}
-
 type ProductCardProps = {
   product: Product;
 };
 
 export function ProductCard({ product }: ProductCardProps) {
+  const router = useRouter();
   const searchParams = useSearchParams();
   const currency = searchParams.get("currency");
   const productHref = currency
     ? `/products/${product.id}?currency=${currency}`
     : `/products/${product.id}`;
+  const [isAdding, setIsAdding] = useState(false);
+  const [cartMessage, setCartMessage] = useState<string | null>(null);
+
+  async function addToCart() {
+    setIsAdding(true);
+    setCartMessage(null);
+
+    try {
+      const response = await fetch("/api/cart/items", {
+        method: "POST",
+        headers: {
+          Accept: "application/json",
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          product_id: product.id,
+          quantity: 1,
+        }),
+      });
+      const result = (await response.json()) as { message?: string };
+
+      if (response.status === 401) {
+        router.push("/login");
+        return;
+      }
+
+      if (!response.ok) {
+        throw new Error(result.message ?? "Ürün sepete eklenemedi.");
+      }
+
+      setCartMessage("Sepete eklendi.");
+      window.dispatchEvent(new Event("cart:updated"));
+    } catch (error) {
+      setCartMessage(
+        error instanceof Error ? error.message : "Ürün sepete eklenemedi."
+      );
+    } finally {
+      setIsAdding(false);
+    }
+  }
 
   return (
     <article className="overflow-hidden rounded-md border border-slate-300 bg-white shadow-sm">
@@ -69,18 +92,7 @@ export function ProductCard({ product }: ProductCardProps) {
               style={{ backgroundImage: `url(${product.image_url})` }}
             />
           ) : null}
-          <span className="absolute left-4 top-4 rounded-full bg-blue-900 px-4 py-2 text-xs font-bold uppercase tracking-wide text-white">
-            {product.is_active ? "Aktif" : "Pasif"}
-          </span>
         </Link>
-        <button
-          type="button"
-          className="absolute right-4 top-4 grid h-12 w-12 place-items-center rounded-md bg-white/90 text-slate-700 shadow-sm transition hover:bg-white hover:text-blue-900"
-          aria-label="Favorilere ekle"
-          title="Favorilere ekle"
-        >
-          <HeartIcon />
-        </button>
       </div>
 
       <div className="p-5">
@@ -110,12 +122,18 @@ export function ProductCard({ product }: ProductCardProps) {
 
         <button
           type="button"
-          className="mt-5 inline-flex h-12 w-full items-center justify-center gap-2 rounded-md bg-blue-900 px-4 font-bold text-white transition hover:bg-blue-800 disabled:cursor-not-allowed disabled:bg-slate-400"
-          disabled={!product.is_active || product.stock < 1}
+          onClick={addToCart}
+          className="mt-5 inline-flex h-12 w-full cursor-pointer items-center justify-center gap-2 rounded-md bg-blue-900 px-4 font-bold text-white transition hover:bg-blue-800 disabled:cursor-not-allowed disabled:bg-slate-400"
+          disabled={isAdding || !product.is_active || product.stock < 1}
         >
           <CartIcon />
-          Sepete Ekle
+          {isAdding ? "Ekleniyor" : "Sepete Ekle"}
         </button>
+        {cartMessage ? (
+          <p className="mt-3 text-sm font-semibold text-slate-600">
+            {cartMessage}
+          </p>
+        ) : null}
       </div>
     </article>
   );

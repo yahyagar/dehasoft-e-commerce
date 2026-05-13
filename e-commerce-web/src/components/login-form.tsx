@@ -40,7 +40,9 @@ export function LoginForm() {
         return;
       }
 
-      router.push("/");
+      const redirectPath = result.data.user.role === "admin" ? "/admin" : "/";
+
+      router.push(redirectPath);
       router.refresh();
     } catch {
       setError("Giriş isteği gönderilemedi.");
