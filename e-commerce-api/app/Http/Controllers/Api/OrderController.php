@@ -31,6 +31,16 @@ class OrderController extends Controller
         ]);
     }
 
+    public function adminIndex(): JsonResponse
+    {
+        return ApiResponse::success([
+            'orders' => $this->orders
+                ->listAll()
+                ->map(fn (Order $order) => $this->orderData($order))
+                ->values(),
+        ]);
+    }
+
     public function store(StoreOrderRequest $request): JsonResponse
     {
         /** @var User $user */
@@ -50,6 +60,13 @@ class OrderController extends Controller
 
         $this->orders->ensureUserCanView($order, $user);
 
+        return ApiResponse::success([
+            'order' => $this->orderData($order->load('items')),
+        ]);
+    }
+
+    public function adminShow(Order $order): JsonResponse
+    {
         return ApiResponse::success([
             'order' => $this->orderData($order->load('items')),
         ]);

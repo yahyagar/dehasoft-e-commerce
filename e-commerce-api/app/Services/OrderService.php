@@ -27,11 +27,15 @@ class OrderService
      */
     public function listForUser(User $user): Collection
     {
-        if ($user->isAdmin()) {
-            return $this->orders->all();
-        }
-
         return $this->orders->forUser($user);
+    }
+
+    /**
+     * @return Collection<int, Order>
+     */
+    public function listAll(): Collection
+    {
+        return $this->orders->all();
     }
 
     public function createFromCart(User $user, array $data): Order
@@ -106,7 +110,7 @@ class OrderService
 
     public function ensureUserCanView(Order $order, User $user): void
     {
-        if ($order->user_id !== $user->id && ! $user->isAdmin()) {
+        if ($order->user_id !== $user->id) {
             throw new OrderException('Order not found', 404);
         }
     }
