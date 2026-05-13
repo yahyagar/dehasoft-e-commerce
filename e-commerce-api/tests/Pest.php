@@ -15,8 +15,15 @@ use Tests\TestCase;
 */
 
 pest()->extend(TestCase::class)
- // ->use(RefreshDatabase::class)
+    ->use(RefreshDatabase::class)
     ->in('Feature');
+
+beforeEach(function (): void {
+    config([
+        'api.proxy_secret' => 'test-proxy-secret',
+        'jwt.secret' => 'test-jwt-secret',
+    ]);
+});
 
 /*
 |--------------------------------------------------------------------------

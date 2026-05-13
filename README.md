@@ -1,8 +1,8 @@
-# DehaSoft E-Commerce
+# DehaCommerce
 
 Laravel Backend / Next.js Frontend e-commerce test project.
 
-Bu proje, DehaSoft test case gereksinimlerine uygun olarak geliştirilmiş proxy katmanlı bir e-ticaret uygulamasıdır. Frontend uygulaması Laravel API'ye doğrudan erişmez; tüm backend iletişimi Next.js API route'ları üzerinden proxy edilerek yapılır.
+DehaCommerce, DehaSoft test case gereksinimlerine uygun olarak geliştirilmiş proxy katmanlı bir e-ticaret uygulamasıdır. Frontend uygulaması Laravel API'ye doğrudan erişmez; tüm backend iletişimi Next.js API route'ları üzerinden proxy edilerek yapılır.
 
 ## İçindekiler
 
@@ -10,12 +10,18 @@ Bu proje, DehaSoft test case gereksinimlerine uygun olarak geliştirilmiş proxy
 - [Teknolojiler](#teknolojiler)
 - [Özellikler](#özellikler)
 - [Kurulum](#kurulum)
-- [Environment Değişkenleri](#environment-değişkenleri)
+- [Environment Ayarları](#environment-ayarları)
+- [Veritabanı Hazırlığı](#veritabanı-hazırlığı)
 - [Çalıştırma](#çalıştırma)
-- [Test ve Kontroller](#test-ve-kontroller)
+- [Makefile Komutları](#makefile-komutları)
+- [Test ve Kalite Kontrolleri](#test-ve-kalite-kontrolleri)
+- [Döviz Kuru Senkronizasyonu](#döviz-kuru-senkronizasyonu)
+- [API Dokümantasyonu](#api-dokümantasyonu)
 - [API Özeti](#api-özeti)
+- [API Response Formatı](#api-response-formatı)
 - [Güvenlik Yaklaşımı](#güvenlik-yaklaşımı)
-- [Notlar](#notlar)
+- [Rol Yetkileri](#rol-yetkileri)
+- [Proje Yapısı](#proje-yapısı)
 
 ## Mimari
 
@@ -34,14 +40,7 @@ Frontend Laravel backend'e doğrudan istek atmaz.
 Tüm backend istekleri Next.js proxy katmanı üzerinden yapılır.
 ```
 
-Proje klasörleri:
-
-```text
-.
-├── e-commerce-api   Laravel backend API
-├── e-commerce-web   Next.js frontend ve proxy layer
-└── docs             Backend/frontend geliştirme ve sunum notları
-```
+Bu nedenle Postman collection da doğrudan Laravel endpointlerini değil, Next.js proxy endpointlerini hedefler. `Proxy-Secret-Key`, Laravel URL ve JWT aktarımı client tarafına açılmaz; Next.js API route'ları bu bilgileri server-side olarak Laravel'e iletir.
 
 ## Teknolojiler
 
@@ -64,32 +63,34 @@ Frontend:
 
 Auth:
 
-- Kullanıcı kayıt, giriş, çıkış
+- Kullanıcı kayıt, giriş ve çıkış
 - JWT token üretimi
 - Next.js tarafında httpOnly cookie ile token saklama
-- Laravel tarafında JWT doğrulama
-- Admin/customer role ayrımı
+- Laravel tarafında `auth:api` ile JWT doğrulama
+- `admin` ve `customer` role ayrımı
 
 Proxy ve güvenlik:
 
 - Laravel API için `Proxy-Secret-Key` kontrolü
 - Backend URL ve proxy secret değerlerinin client tarafına sızmaması
 - Admin endpointlerinde backend middleware kontrolü
+- Customer kullanıcıların yalnızca kendi sepet ve sipariş verilerine erişebilmesi
 
 Ürün ve kategori:
 
 - Kategori listeleme
-- Ürün listeleme ve detay
-- Admin ürün ekleme, güncelleme, silme
+- Ürün listeleme ve ürün detayı
+- Aktif/pasif ürün yönetimi
+- Admin ürün ekleme, güncelleme ve silme
 - Ürün görsel upload desteği
 
 Sepet:
 
 - Sepete ürün ekleme
-- Miktar güncelleme
+- Miktar artırma/azaltma
 - Ürün silme
 - Sepeti temizleme
-- Sepet toplamlarını para birimine göre görüntüleme
+- Sepet toplamlarını seçilen para birimine göre görüntüleme
 
 Sipariş:
 
@@ -103,42 +104,53 @@ Döviz kuru:
 
 - TRY, USD, EUR desteği
 - Currency API ile kur senkronizasyonu
-- Ürün, sepet ve sipariş fiyatlarının seçilen para birimine göre gösterimi
+- Ürün, sepet, checkout ve sipariş fiyatlarının seçilen para birimine göre gösterimi
 
 ## Kurulum
 
-Projeyi klonladıktan sonra backend ve frontend ayrı ayrı kurulmalıdır.
+Ön gereksinimler:
 
-### Backend
+- PHP 8.3+
+- Composer
+- Node.js ve npm
+- PostgreSQL
+- `make` komutu
+
+Projeyi klonladıktan sonra bağımlılıkları kökten kurabilirsiniz:
+
+```bash
+make install
+```
+
+Manuel kurulum tercih edilirse:
 
 ```bash
 cd e-commerce-api
 composer install
-cp .env.example .env
-php artisan key:generate
-php artisan jwt:secret
-```
 
-Veritabanı hazırlandıktan sonra:
-
-```bash
-php artisan migrate
-php artisan db:seed
-php artisan storage:link
-```
-
-### Frontend
-
-```bash
-cd e-commerce-web
+cd ../e-commerce-web
 npm install
 ```
 
-## Environment Değişkenleri
-
-README içinde gerçek secret veya API key tutulmaz. Aşağıdaki değerler local geliştirme için örnek placeholder değerlerdir.
-
 ### Backend `.env`
+
+Kök dizinden:
+
+```bash
+make setup-env
+```
+
+Bu komut backend `.env` dosyasını oluşturur, Laravel `APP_KEY` ve `JWT_SECRET` üretir, frontend için de `.env.local` dosyasını hazırlar.
+
+Sadece backend env işlemleri için:
+
+```bash
+make api-env
+make api-key
+make api-jwt-secret
+```
+
+Backend `.env` içinde özellikle şu değerleri ayarlayın:
 
 ```env
 APP_URL=http://127.0.0.1:8000
@@ -162,26 +174,54 @@ CURRENCY_API_TIMEOUT=10
 
 Önemli:
 
-- `API_PROXY_SECRET` ve frontend `LARAVEL_PROXY_SECRET` aynı olmalıdır.
 - `JWT_SECRET` manuel yazılmak yerine `php artisan jwt:secret` ile üretilmelidir.
-- `CURRENCY_API_KEY` gerçek API key olmalıdır, public repo'ya yazılmamalıdır.
+- `CURRENCY_API_KEY` gerçek Currency API key değeridir ve public repoya yazılmamalıdır.
+- `API_PROXY_SECRET` ve frontend `LARAVEL_PROXY_SECRET` aynı olmalıdır.
 
 ### Frontend `.env.local`
+
+`make setup-env` veya `make web-env` bu dosyayı local default değerlerle oluşturur:
+
+```bash
+make web-env
+```
+
+İçeriği:
 
 ```env
 LARAVEL_API_URL=http://127.0.0.1:8000/api
 LARAVEL_PROXY_SECRET=change-me-local-proxy-secret
 ```
 
-Bu dosya client bundle'a dahil edilmez; server-side Next.js API route'ları tarafından kullanılır.
+`LARAVEL_API_URL` local geliştirme için verilen varsayılan backend adresidir. Backend'i farklı host/port ile çalıştırırsanız bu değeri ona göre güncelleyin. `LARAVEL_PROXY_SECRET`, backend `API_PROXY_SECRET` ile aynı olmalıdır.
+
+Bu değerler client bundle'a dahil edilmez; Next.js API route'ları tarafından server-side kullanılır.
+
+## Veritabanı Hazırlığı
+
+PostgreSQL tarafında `.env` içinde verdiğiniz database oluşturulduktan sonra:
+
+```bash
+make api-migrate-seed
+make api-storage-link
+```
+
+Manuel karşılığı:
+
+```bash
+cd e-commerce-api
+php artisan migrate --seed
+php artisan storage:link
+```
+
+`storage:link`, admin panelden yüklenen ürün görsellerinin public URL ile görüntülenebilmesi için gereklidir.
 
 ## Çalıştırma
 
 Backend:
 
 ```bash
-cd e-commerce-api
-php artisan serve
+make api-serve
 ```
 
 Varsayılan backend adresi:
@@ -193,8 +233,7 @@ http://127.0.0.1:8000
 Frontend:
 
 ```bash
-cd e-commerce-web
-npm run dev
+make web-dev
 ```
 
 Varsayılan frontend adresi:
@@ -203,9 +242,124 @@ Varsayılan frontend adresi:
 http://localhost:3000
 ```
 
+Uygulama akışı:
+
+```text
+http://localhost:3000
+```
+
+Admin panel:
+
+```text
+http://localhost:3000/admin
+```
+
+## Makefile Komutları
+
+Kök dizindeki `Makefile`, sık kullanılan backend/frontend komutlarını tek yerden çalıştırmak için eklenmiştir.
+
+Setup:
+
+```bash
+make install
+make setup-env
+make api-env
+make api-key
+make api-jwt-secret
+make web-env
+make install-api
+make install-web
+```
+
+Development:
+
+```bash
+make api-serve
+make web-dev
+```
+
+Database:
+
+```bash
+make api-migrate
+make api-seed
+make api-migrate-seed
+make api-storage-link
+```
+
+Entegrasyon:
+
+```bash
+make exchange-rates
+```
+
+Kalite:
+
+```bash
+make test
+make test-api
+make test-web
+make web-lint
+make web-typecheck
+make web-build
+make api-pint
+```
+
+## Test ve Kalite Kontrolleri
+
+Tüm ana kontroller:
+
+```bash
+make test
+```
+
+Backend feature testleri:
+
+```bash
+make test-api
+```
+
+Test kapsamı:
+
+- Proxy secret kontrolü
+- Auth register/login ve role dönüşleri
+- Customer kullanıcının admin endpointlerine erişememesi
+- Admin ürün ekleme/güncelleme/silme
+- Pasif ürünlerin aktif ürün listesinde görünmemesi
+- Sepete ürün ekleme ve stok üstü miktarın engellenmesi
+- Kullanıcıların başka kullanıcı sepet item'larını değiştirememesi
+- Boş sepetten sipariş oluşturulamaması
+- Sipariş oluşunca stok düşmesi ve sepetin temizlenmesi
+- Customer kullanıcının yalnızca kendi siparişlerini görebilmesi
+- Admin kullanıcının sipariş listeleme ve status güncellemesi
+
+Frontend lint ve TypeScript kontrolü:
+
+```bash
+make test-web
+```
+
+Production build:
+
+```bash
+make web-build
+```
+
+Backend format:
+
+```bash
+make api-pint
+```
+
 ## Döviz Kuru Senkronizasyonu
 
 Currency API'den güncel kurları çekmek için:
+
+```bash
+make exchange-rates
+```
+
+Manuel karşılığı:
 
 ```bash
 cd e-commerce-api
@@ -214,32 +368,27 @@ php artisan exchange-rates:sync
 
 Currency API free planında base currency USD olduğu için backend USD bazlı oranları TRY karşılıklarına çevirerek kaydeder.
 
-## Test ve Kontroller
+## API Dokümantasyonu
 
-Backend test:
+Postman collection:
 
-```bash
-cd e-commerce-api
-php artisan test
+```text
+docs/postman/dehacommerce-next-proxy.postman_collection.json
 ```
 
-Frontend lint:
+Postman kullanımı:
 
-```bash
-cd e-commerce-web
-npm run lint
-```
+1. Backend ve frontend sunucularını çalıştırın.
+2. Postman'de collection dosyasını import edin.
+3. `baseUrl` değerinin `http://localhost:3000` olduğundan emin olun.
+4. Customer işlemleri için önce `POST customer login` isteğini çalıştırın.
+5. Admin işlemleri için önce `POST admin login` isteğini çalıştırın.
 
-Frontend TypeScript kontrolü:
-
-```bash
-cd e-commerce-web
-npx tsc --noEmit
-```
+Collection bilinçli olarak Next.js proxy endpointlerini test eder; Laravel API'ye doğrudan istek atmaz. Bu sayede proxy zorunluluğu, backend izolasyonu, httpOnly cookie ile JWT saklama ve server-side secret yönetimi doğrulanır.
 
 ## API Özeti
 
-Tüm endpointler `/api` prefix'i altındadır.
+Tarayıcı ve Postman tarafında hedeflenen endpointler Next.js proxy endpointleridir.
 
 Auth:
 
@@ -277,13 +426,14 @@ Sipariş:
 GET  /api/orders
 POST /api/orders
 GET  /api/orders/{order}
-PUT  /api/orders/{order}/status
 ```
 
-Döviz:
+Admin sipariş:
 
 ```text
-GET /api/exchange-rates
+GET /api/admin/orders
+GET /api/admin/orders/{order}
+PUT /api/admin/orders/{order}/status
 ```
 
 Health:
@@ -330,6 +480,7 @@ Proxy secret:
 - Laravel'e giden protected isteklerde `Proxy-Secret-Key` header'ı kontrol edilir.
 - Bu değer `.env` içinde tutulur.
 - Client tarafına açık değildir.
+- Next.js proxy route'ları Laravel'e giderken bu header'ı server-side ekler.
 
 JWT:
 
@@ -342,28 +493,12 @@ Admin:
 
 - Admin kontrolleri sadece frontend ile sınırlı değildir.
 - Ürün yazma/silme ve sipariş status güncelleme endpointleri backend'de `admin` middleware ile korunur.
+- Customer kullanıcılar admin endpointlerinden `403 Forbidden` alır.
 
-## Ürün Görsel Upload Akışı
+CORS ve backend exposure:
 
-Admin panelde ürün görseli dosya olarak yüklenir.
-
-```text
-Admin görsel seçer
-  -> Next.js proxy FormData gönderir
-  -> Laravel dosyayı storage/app/public/products altına kaydeder
-  -> Public URL üretir
-  -> products.image_url alanına yazar
-  -> Frontend image_url ile görseli gösterir
-```
-
-Görsel validation:
-
-```text
-jpg, jpeg, png, webp
-max 2 MB
-```
-
-`php artisan storage:link` komutu public dosya erişimi için gereklidir.
+- Client Laravel URL'sini doğrudan kullanmaz.
+- Backend internal secret ve token aktarımı browser JavaScript tarafına açılmaz.
 
 ## Rol Yetkileri
 
@@ -382,4 +517,25 @@ Customer:
 - Sipariş oluşturur
 - Sadece kendi siparişlerini görür
 
+## Proje Yapısı
 
+```text
+.
+├── README.md
+├── Makefile
+├── docs
+│   ├── backend-progress-and-presentation-notes.md
+│   ├── frontend-progress-and-presentation-notes.md
+│   └── postman
+│       └── dehacommerce-next-proxy.postman_collection.json
+├── e-commerce-api
+│   ├── app
+│   ├── database
+│   ├── routes
+│   └── tests
+└── e-commerce-web
+    ├── src/app
+    ├── src/components
+    ├── src/lib
+    └── src/types
+```
