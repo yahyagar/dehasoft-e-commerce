@@ -2,7 +2,7 @@ API_DIR := e-commerce-api
 WEB_DIR := e-commerce-web
 
 .PHONY: help install install-api install-web setup-env api-env api-key api-jwt-secret web-env \
-	api-serve web-dev \
+	api-serve web-dev docker-build docker-up docker-down docker-logs docker-ps \
 	test test-api test-web web-lint web-typecheck web-build \
 	api-pint api-migrate api-seed api-migrate-seed api-storage-link api-db-fresh \
 	exchange-rates status
@@ -23,6 +23,11 @@ help:
 	@echo "Development:"
 	@echo "  make api-serve         Start Laravel API server"
 	@echo "  make web-dev           Start Next.js dev server"
+	@echo "  make docker-build      Build Docker images"
+	@echo "  make docker-up         Start Docker Compose stack"
+	@echo "  make docker-down       Stop Docker Compose stack"
+	@echo "  make docker-logs       Follow Docker Compose logs"
+	@echo "  make docker-ps         Show Docker Compose services"
 	@echo ""
 	@echo "Quality:"
 	@echo "  make test              Run backend tests and frontend checks"
@@ -73,6 +78,21 @@ api-serve:
 
 web-dev:
 	cd $(WEB_DIR) && npm run dev
+
+docker-build:
+	docker compose build
+
+docker-up:
+	docker compose up --build
+
+docker-down:
+	docker compose down
+
+docker-logs:
+	docker compose logs -f
+
+docker-ps:
+	docker compose ps
 
 test: test-api test-web
 
