@@ -47,7 +47,7 @@ Bu nedenle Postman collection da doğrudan Laravel endpointlerini değil, Next.j
 Backend:
 
 - Laravel 13
-- PHP 8.3+
+- PHP 8.4+
 - PostgreSQL
 - tymon/jwt-auth
 - Pest
@@ -110,11 +110,93 @@ Döviz kuru:
 
 Ön gereksinimler:
 
-- PHP 8.3+
+- PHP 8.4+
 - Composer
 - Node.js ve npm
 - PostgreSQL
 - `make` komutu
+
+Docker ile çalıştırmak isterseniz local PHP, Composer, Node.js ve PostgreSQL kurulumuna ihtiyaç duymadan Docker Desktop yeterlidir.
+
+### Docker ile Test Ortamını Çalıştırma
+
+Projeyi hızlıca test etmek için önerilen en pratik yol Docker kullanmaktır. Docker kurulumu, local makinede ayrı ayrı PHP, Composer, Node.js ve PostgreSQL hazırlamadan çalışır.
+
+Kök dizinde:
+
+```bash
+make docker-up
+```
+
+Bu komut şu servisleri başlatır:
+
+```text
+postgres  -> PostgreSQL database
+api       -> Laravel PHP-FPM uygulaması
+nginx     -> Laravel API HTTP girişi
+web       -> Next.js frontend ve proxy layer
+```
+
+Docker ortamında adresler:
+
+```text
+Frontend: http://localhost:3000
+Backend:  http://localhost:8000
+Postgres: localhost:5433
+```
+
+Container içi proxy akışı:
+
+```text
+Browser
+  -> Next.js web container
+  -> http://nginx/api
+  -> Laravel API
+  -> PostgreSQL
+```
+
+Docker ortamı bir test/demo ortamı oluşturmak için hazırlanmıştır. API container başlangıcında migration'lar çalışır ve temel test datası otomatik oluşturulur. Başlangıç sırasında terminalde şu bilgiler gösterilir:
+
+```text
+Admin user:
+  email:    admin@dehasoft.com
+  password: password123
+
+Customer user:
+  email:    test@dehasoft.com
+  password: password123
+
+Seeded exchange rates:
+  TRY -> 1.000000 TRY
+  USD -> 32.500000 TRY
+  EUR -> 35.200000 TRY
+```
+
+Bu bilgilerle uygulama doğrudan test edilebilir. Kur bilgileri Docker test ortamında Currency API'den değil, bilinçli olarak seeder üzerinden gelir. Böylece projeyi çeken kişi API key girmeden aynı test ortamını ayağa kaldırabilir.
+
+Ürün datası otomatik oluşturulmaz; admin panelden ürün eklenerek ürün, sepet, checkout ve sipariş akışı test edilebilir.
+
+Docker servislerini durdurmak için:
+
+```bash
+make docker-down
+```
+
+Docker test ortamı varsayılan olarak seeder kurlarıyla açılır. Gerçek Currency API verileriyle kur senkronizasyonunu test etmek isterseniz API key'i Docker stack başlatılırken verilmelidir:
+
+```bash
+CURRENCY_API_KEY=your_currency_api_key make docker-up
+```
+
+Stack bu şekilde başlatıldığında uygulama yine seeder kurlarıyla açılır, ancak API container içinde `CURRENCY_API_KEY` bulunduğu için gerçek sync komutu sonradan çalıştırılabilir:
+
+```bash
+docker compose exec api php artisan exchange-rates:sync
+```
+
+Bu komut Currency API'den güncel TRY/USD/EUR oranlarını çeker ve `exchange_rates` tablosunu günceller. Eğer Docker stack `CURRENCY_API_KEY` verilmeden başlatılmışsa bu komut `Currency API key is not configured` hatası döner.
+
+### Docker Kullanmadan Kurulum
 
 Projeyi klonladıktan sonra bağımlılıkları kökten kurabilirsiniz:
 
@@ -276,6 +358,11 @@ Development:
 ```bash
 make api-serve
 make web-dev
+make docker-build
+make docker-up
+make docker-down
+make docker-logs
+make docker-ps
 ```
 
 Database:

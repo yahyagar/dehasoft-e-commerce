@@ -23,11 +23,9 @@ services:
     environment:
       APP_NAME: DehaCommerce
       APP_ENV: local
-      APP_KEY: base64:L2ShuKHz5/9+TYKyIXHiHZcw/2qYdUi5rar7Xz3L07A=
       APP_DEBUG: "true"
       APP_URL: http://localhost:8000
       API_PROXY_SECRET: local-secret-123
-      JWT_SECRET: 0625ec66093d687b83d569759204e752f17d206ac6b0f2bc0d00afdbf71fa750
       JWT_TTL: 120
       CURRENCY_API_URL: https://currencyapi.net/api/v2/rates
       CURRENCY_API_KEY: ${CURRENCY_API_KEY:-}
